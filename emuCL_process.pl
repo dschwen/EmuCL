@@ -1,5 +1,7 @@
 #!/usr/bin/perl
 
+print "#include <emuCL_kernel.h>\n";
+
 while(<STDIN>)
 {
   if( $stream ne ""  || /^__kernel\s+void\s+/  )
@@ -8,6 +10,8 @@ while(<STDIN>)
   }
   else
   {
+    s/get_(global|local)_id\s*\(([^\)+])\)/__args->get_$1_id\[$2\]/g;
+    s/barrier\(\s*CLK_LOCAL_MEM_FENCE\s*\)/barrier(__args->fence_barrier)/g;
     print $_;
   }
 
@@ -24,7 +28,8 @@ while(<STDIN>)
     $stream =~ /^__kernel\s+void\s+([^\s\(]+)/;
     $fname = $1;
 
-    print "void $fname( void **__args )\n{ $tail\n";
+    print "void $fname( void* __vargs )\n{\n";
+    print "  __argstruct* __args = (__argstruct*)__vargs;\n";
 
     $n = 0;
     foreach( @arglist )
@@ -38,9 +43,10 @@ while(<STDIN>)
       $type = $1;
       $vname = $2;
 
-      print "  $_ = *(($type*)__args[$n]);\n";
+      print "  $_ = *(($type*)(__args->a[$n]));\n";
       $n++;
     }
+    print "  $tail\n";
   
     $stream = "";
   }
