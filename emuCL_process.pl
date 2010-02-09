@@ -52,3 +52,5 @@ while(<STDIN>)
   }
 }
 
+print "\nint main() { return 0; }\n";
+
