@@ -5,6 +5,7 @@
 #define __global ''
 
 #include "emucl_args.h"
+#include <math.h>
 #include <pthreads.h>
 
 void barrier( pthread_barrier_t* fence_barrier )

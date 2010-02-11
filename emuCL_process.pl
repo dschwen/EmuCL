@@ -10,7 +10,7 @@ while(<STDIN>)
   }
   else
   {
-    s/get_(global|local)_id\s*\(([^\)+])\)/__args->get_$1_id\[$2\]/g;
+    s/get_(global|local)_(id|size)\s*\(([^\)+])\)/__args->get_$1_$2\[$3\]/g;
     s/barrier\(\s*CLK_LOCAL_MEM_FENCE\s*\)/barrier(__args->fence_barrier)/g;
     print $_;
   }
