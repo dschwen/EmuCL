@@ -10,6 +10,7 @@
 #include <pthread.h>
 #include <malloc.h>
 #include <string.h>
+#include <dlfcn.h>
 #include <unistd.h>
 
 const int __argidmax = 50;
@@ -130,11 +131,18 @@ cl_int clGetDeviceInfo( cl_device_id device, cl_int mode, cl_int buffer_size, cl
 //err = clBuildProgram(program[i], 0, NULL, num_defines, NULL, NULL);
 //clGetProgramBuildInfo(program[i], devices, CL_PROGRAM_BUILD_LOG, 2048, build, NULL);
 
-cl_kernel clCreateKernel( cl_program program, const char *kernel_name, cl_int *errcode_ret)
+cl_kernel clCreateKernel( cl_program p, const char *kernel_name, cl_int *err )
 {
-  cl_kernel c = (cl_kernel)malloc(sizeof(cl_kernel_struct));
-  c->a = (void**)malloc( __argidmax * sizeof(void*) ); // reserve memory for kernel args (no!!!)
-  return c;
+  cl_kernel k = (cl_kernel)malloc(sizeof(cl_kernel_struct));
+  k->a = (void**)malloc( __argidmax * sizeof(void*) ); // reserve memory for kernel args
+
+  char f[300];
+  snprintf( f, 300, "%s.so", p->f );
+  void* handle = dlopen( f, RTLD_LAZY);
+  k->func = (cl_kernel_func)dlsym( handle, kernel_name );  
+
+  if( err != 0 ) (*err) = CL_SUCCESS;
+  return k;
 }
 
 typedef int cl_kernel_work_group_info;
@@ -162,7 +170,7 @@ cl_program clCreateProgramWithSource( cl_context context, cl_int dummy1, const c
   p->f = (char*)malloc(200);
   p->b = (char*)malloc(20000);
 
-  snprintf( p->f, 200, "%d.%d", getpid(), context->sid++ );
+  snprintf( p->f, 200, ".%d.%d", getpid(), context->sid++ );
   snprintf( cmd, 300, "./emuCL_process.pl > %s.c", p->f );
 
   FILE *proc = popen( cmd, "w" );
@@ -178,7 +186,8 @@ cl_int clBuildProgram( cl_program p, cl_int dummy1, void* dummy2, char* options,
   char cmd[64000];
 
   // this should ideally be replaced by libtool (but it drives me crazy!!!!)
-  snprintf( cmd, 64000, "gcc -xc -fPIC -shared %s -Wl,-soname,%s.so -o %s.so %s.c -lpthread -lm", options, p->f, p->f, p->f );
+  snprintf( cmd, 64000, "gcc -xc -std=gnu99 -fPIC -shared %s -Wl,-soname,%s.so -o %s.so %s.c -lpthread -lm", options, p->f, p->f, p->f );
+  printf( "%s\n", cmd );
 
   FILE *proc = popen( cmd, "r" );
   fread( p->b, 1, 20000, proc ); 
@@ -189,9 +198,9 @@ cl_int clBuildProgram( cl_program p, cl_int dummy1, void* dummy2, char* options,
 
 const cl_int CL_PROGRAM_BUILD_LOG = 0;
 //  clGetProgramBuildInfo(program[i], devices, CL_PROGRAM_BUILD_LOG, 2048, build, NULL);
-cl_int clGetProgramBuildInfo( cl_program program, cl_device_id device, cl_int mode, size_t buffer_size, cl_char* buffer, void* d1)
+cl_int clGetProgramBuildInfo( cl_program p, cl_device_id device, cl_int mode, size_t buffer_size, cl_char* buffer, void* d1)
 {
-  strncpy( buffer, "Not implemented yet!", buffer_size );
+  strncpy( buffer, p->b, buffer_size );
   return CL_SUCCESS;
 }
 
@@ -223,7 +232,9 @@ cl_int clReleaseProgram( cl_program p )
 {
   char f[300];
   snprintf( f, 300, "%s.c", p->f );
-  unlink( f );
+  //unlink( f );
+  snprintf( f, 300, "%s.so", p->f );
+  //unlink( f );
   free( p->f );
   free( p->b );
   return CL_SUCCESS;

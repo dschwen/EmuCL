@@ -1,7 +1,9 @@
 #ifndef EMUCL_ARGS_H
 #define EMUCL_ARGS_H
 
-struct __argstruct {
+#include <pthread.h>
+
+struct emuCL_sargstruct {
   int get_global_id[3];
   int get_local_id[3];
   pthread_barrier_t* fence_barrier;
@@ -9,5 +11,6 @@ struct __argstruct {
   pthread_cond_t* fence_cond;
   void **a;
 };
+typedef struct emuCL_sargstruct emuCL_argstruct;
 
 #endif

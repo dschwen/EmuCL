@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-print "#include <emuCL_kernel.h>\n";
+print "#include \"emuCL_kernel.h\"\n";
 
 while(<STDIN>)
 {
@@ -29,7 +29,7 @@ while(<STDIN>)
     $fname = $1;
 
     print "void $fname( void* __vargs )\n{\n";
-    print "  __argstruct* __args = (__argstruct*)__vargs;\n";
+    print "  emuCL_argstruct* __args = (emuCL_argstruct*)__vargs;\n";
 
     $n = 0;
     foreach( @arglist )
@@ -39,7 +39,7 @@ while(<STDIN>)
       s/\s\*/* /g;
       while( s/\s\s/ /g ) {};
 
-      /^(.+)\s+([^\s]+)$/;
+      /^(.+)\s+([^\s]+)\s*$/;
       $type = $1;
       $vname = $2;
 
