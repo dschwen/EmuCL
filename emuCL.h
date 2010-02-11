@@ -41,7 +41,13 @@ struct cl_kernel_struct
 };
 typedef cl_kernel_struct* cl_kernel;
 
-typedef char* cl_program; // the name of the temporary source file
+struct cl_program_struct
+{
+  char* f; // the name of the temporary source file
+  char* b; // compile messages
+};
+typedef cl_program_struct* cl_program;
+
 typedef cl_int cl_event;
 
 //cl_int clSetKernelArg( kernel[0], 0, sizeof(cl_mem), &c_mem );
@@ -152,21 +158,32 @@ cl_int clGetKernelWorkGroupInfo( cl_kernel kernel, cl_device_id device, cl_kerne
 cl_program clCreateProgramWithSource( cl_context context, cl_int dummy1, const char** program_source, void* dummy2, cl_int *err)
 {
   char cmd[300];
-  cl_program f = (cl_program)malloc(200);
-  snprintf( f, 200, "%d.%d.cc", getpid(), context->sid++ );
-  snprintf( cmd, 300, "./emuCL_process.pl > %s", f );
+  cl_program p = (cl_program)malloc( sizeof(cl_program_struct) );
+  p->f = (char*)malloc(200);
+  p->b = (char*)malloc(20000);
+
+  snprintf( p->f, 200, "%d.%d", getpid(), context->sid++ );
+  snprintf( cmd, 300, "./emuCL_process.pl > %s.c", p->f );
 
   FILE *proc = popen( cmd, "w" );
   fprintf( proc, *program_source ); 
   pclose(proc);
 
   *err = CL_SUCCESS;
-  return f;
+  return p;
 }
 
-cl_int clBuildProgram( cl_program program, cl_int dummy1, void* dummy2, char* options, void* dummy3, void* dummy4 )
+cl_int clBuildProgram( cl_program p, cl_int dummy1, void* dummy2, char* options, void* dummy3, void* dummy4 )
 {
-  // system ( litool..
+  char cmd[64000];
+
+  // this should ideally be replaced by libtool (but it drives me crazy!!!!)
+  snprintf( cmd, 64000, "gcc -xc -fPIC -shared %s -Wl,-soname,%s.so -o %s.so %s.c -lpthread -lm", options, p->f, p->f, p->f );
+
+  FILE *proc = popen( cmd, "r" );
+  fread( p->b, 1, 20000, proc ); 
+  pclose(proc);
+
   return 0;
 }
 
@@ -202,10 +219,13 @@ cl_int clReleaseKernel( cl_kernel kernel)
   return CL_SUCCESS;
 }
 
-cl_int clReleaseProgram( cl_program program )
+cl_int clReleaseProgram( cl_program p )
 {
-  unlink( program );
-  free( program );
+  char f[300];
+  snprintf( f, 300, "%s.c", p->f );
+  unlink( f );
+  free( p->f );
+  free( p->b );
   return CL_SUCCESS;
 }
 
