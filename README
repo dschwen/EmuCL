@@ -1,0 +1,4 @@
+OpenCL emulation layer (very hackish)
+
+* 2010-2-11 Thus far the demo OpenCL app and its kernels compile. But it doesn't do anything yet 
+  kernels are not lauched yet (will use pthreads for this)
