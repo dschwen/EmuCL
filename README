@@ -3,7 +3,7 @@ OpenCL emulation layer (very hackish)
 All code licensed under GPL3
 
 * 2010-2-11 Thus far the demo OpenCL app and its kernels compile. But it doesn't do anything yet 
-  kernels are not lauched yet (will use pthreads for this)
+  kernels are not launched yet (will use pthreads for this)
 
 Big fat disclaimer
   EmuCL does _not_ claim to be OpenCL standards conformant. In fact it isn't! At all! It is a 
@@ -14,9 +14,9 @@ What is the point?
   I know that the ATI SDK supports CPU as compute devices. But they require a CPU with at least
   SSE3 instructions. I don't have that, and I don't plan on buying a new laptop anytime soon.
   EmuCL allows me to add debugging output wherever I want. I can look at the emulated local memory,
-  the global memory, at any point in time. Kernels can output status info simply with printf.
+  the global memory, at any point in time. Kernels can output status info simply with printf().
   On top of that it is a fun way to familiarize myself with OpenCL. And hey, it is none of your 
-  bussiness what I do with my spare time!!!! ;-)
+  business what I do with my spare time!!!! ;-)
 
 How does it work?
   OpenCL kernels are small programs written in an extended version of C99. They are usually
@@ -27,16 +27,16 @@ How does it work?
   implementations that do the bare minimum to get a simple OpenCL application running.
 
   Kernels are rewritten on the fly into valid C99 code and are compiled using gcc at runtime into
-  shared libraries. Thes libraries are opened using dlopen and the kernel functions are launched
-  as Posix threads (pthreads). The code rewriter takes care of keywords like __global, __local, 
-  __kernel, etc., functions like get_local_size(d), barrier  etc. and most importantly the kernel 
-  parameters. All parameters are wrapped into a struct, and the function is rewriotten to accept a 
+  shared libraries. These libraries are opened using dlopen() and the kernel functions are launched
+  as Posix threads (pthreads). The code re-writer takes care of keywords like __global, __local, 
+  __kernel, etc., functions like get_local_size(), barrier  etc. and most importantly the kernel 
+  parameters. All parameters are wrapped into a struct, and the function is rewritten to accept a 
   single pointer to this structure (making it a valid pthread entry function).
 
 Example:
   compile the example program with
   > g++ phasefield3D.cc -o phasefield3D_emu -ldl -lpthread
 
-  libdl is needed for the dlopen call, pthread is needed to launch kernels as threads.
-  in the longrun emucl should be compiled into a shared library rather than an ugly include file...
+  libdl is needed for the dlopen() call, pthread is needed to launch kernels as threads.
+  in the long run EmuCL should be compiled into a shared library rather than an ugly include file...
 
