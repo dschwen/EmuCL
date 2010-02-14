@@ -33,12 +33,12 @@ struct cl_context_struct
   cl_int sid; 
 };
 typedef cl_context_struct* cl_context;
-
-typedef void(*cl_kernel_func)(void*); // function pointer
+typedef void*(*cl_kernel_func)(void*); // function pointer
 struct cl_kernel_struct
 {
   void** a;
   cl_kernel_func func;
+  void* shared;
 };
 typedef cl_kernel_struct* cl_kernel;
 
@@ -56,6 +56,14 @@ typedef cl_int cl_event;
 cl_int clSetKernelArg( cl_kernel kernel, cl_int id, cl_int size, void* ptr )
 {
   if( id >= __argidmax ) return 1;
+
+  // reserve shared memory
+  if( ptr == NULL )
+  {
+    kernel->shared = realloc( kernel->shared, size );
+    ptr = kernel->shared;
+  }
+
   kernel->a[id] = ptr;
   return CL_SUCCESS;
 }
@@ -134,6 +142,7 @@ cl_kernel clCreateKernel( cl_program p, const char *kernel_name, cl_int *err )
 {
   cl_kernel k = (cl_kernel)malloc(sizeof(cl_kernel_struct));
   k->a = (void**)malloc( __argidmax * sizeof(void*) ); // reserve memory for kernel args
+  k->shared = NULL;
 
   char f[300];
   snprintf( f, 300, "%s.so", p->f );
@@ -213,14 +222,94 @@ cl_int clEnqueueNDRangeKernel( cl_command_queue command_queue, cl_kernel kernel,
                                const size_t *global_work_offset, const size_t *global_work_size, const size_t *local_work_size,
                                cl_uint num_events_in_wait_list, const cl_event *event_wait_list, cl_event *event)
 {
-  //pthread_barrier_init(&barr, NULL, THREADS );
+  if( work_dim < 1 || work_dim > 3 )
+  {
+    fprintf( stderr, "Illegal work_dim in clEnqueueNDRangeKernel()\n" );
+    exit(1);
+  }
+fprintf( stderr, "* clEnqueueNDRangeKernel\n" );
+  emuCL_argstruct* arg_array;
+  
+
+  int i , j[3], k, l[3] = { 1, 1, 1 }, m[3], n = 1, n2, w[3] = { 1, 1, 1 }, g[3] = { 1, 1, 1 };
+  for(i = 0; i < work_dim; i++ )
+  {
+    l[i] = ( global_work_size[i] + local_work_size[i] - 1 ) / local_work_size[i];
+    w[i] = local_work_size[i];
+    g[i] = global_work_size[i];
+    n *= l[i];
+  }
+fprintf( stderr, " * calculated worksizes\n" );
+
+  pthread_barrier_t fence_barrier;
+  pthread_t* thr;
+
+  // initialize argument structures
+  arg_array = (emuCL_argstruct*)malloc( n * sizeof(emuCL_argstruct) );
+  thr = (pthread_t*)malloc( n * sizeof(pthread_t) );
+  k = 0;
+fprintf( stderr, " * allocated memory\n" );
+
+  for( m[0] = 1; m[0] < w[0]; m[0]++ )
+    for( m[1] = 1; m[1] < w[1]; m[1]++ )
+      for( m[2] = 1; m[2] < w[2]; m[2]++ )
+      {
+        arg_array[k].fence_barrier_p = &fence_barrier;
+        arg_array[k].a = kernel->a;
+        for(i = 0; i < work_dim; i++ )
+        {
+          arg_array[k].get_local_id[i] = m[i];
+          arg_array[k].get_local_size[i] = w[i];
+          arg_array[k].get_global_size[i] = g[i];
+        }
+        k++;
+      }
+fprintf( stderr, " * initialized arguments\n" );
 
   // spawn threads
-  /*
-    pthread_barrier_init(pthread_barrier_t *restrict barrier, const pthread_barrierattr_t *restrict attr, unsigned count);
-  */
+  for( j[0] = 1; j[0] < l[0]; j[0]++ ) // iterate over work-groups
+    for( j[1] = 1; j[1] < l[1]; j[1]++ )
+      for( j[2] = 1; j[2] < l[2]; j[2]++ )
+      {
+        // count threads and initialize global IDs
+        n2 = 0;
+        for( k = 0; k < n; k++ )
+        {
+          arg_array[k].spawn = true;
+          for(i = 0; i < work_dim; i++ )
+          {
+            arg_array[k].get_global_id[i] = m[i] + j[i]*w[i];
+            if( arg_array[k].get_global_id[i] >= g[i] )
+            {
+              arg_array[k].spawn = false;
+              break;
+            }
+          }
+          if( arg_array[k].spawn ) n2++;
+        }
 
-  // wait for threads to finish
+        // initialize the barrier accordingly
+        pthread_barrier_init( &fence_barrier, NULL, n2 );
+fprintf( stderr, " * initialized barrier\n" );
+
+        // now actually spawn the threads
+        for( k = 0; k < n; k++ )
+          if( arg_array[k].spawn )
+          {
+fprintf( stderr, " * spawning thread #%d\n", k );
+            
+            if( pthread_create(&thr[k], NULL, kernel->func, NULL) )
+            {
+              fprintf( stderr, "Could not create thread\n" );
+              exit(1);
+            }
+          }
+
+        // now wait for all running threads in the work group to finish
+        for( k = 0; k < n; k++ )
+          if( arg_array[k].spawn )
+            pthread_join( thr[k], NULL );
+      }
 
   return CL_SUCCESS;
 }

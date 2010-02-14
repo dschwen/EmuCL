@@ -1,6 +1,7 @@
 #!/usr/bin/perl
 
 print "#include \"emuCL_kernel.h\"\n";
+print "#define EMUCL\n";
 
 while(<STDIN>)
 {
@@ -11,7 +12,7 @@ while(<STDIN>)
   else
   {
     s/get_(global|local)_(id|size)\s*\(([^\)+])\)/__args->get_$1_$2\[$3\]/g;
-    s/barrier\(\s*CLK_LOCAL_MEM_FENCE\s*\)/barrier(__args->fence_barrier)/g;
+    s/barrier\(\s*CLK_LOCAL_MEM_FENCE\s*\)/barrier(__args->fence_barrier_p)/g;
     print $_;
   }
 
@@ -28,7 +29,7 @@ while(<STDIN>)
     $stream =~ /^__kernel\s+void\s+([^\s\(]+)/;
     $fname = $1;
 
-    print "void $fname( void* __vargs )\n{\n";
+    print "void* $fname( void* __vargs )\n{\n";
     print "  emuCL_argstruct* __args = (emuCL_argstruct*)__vargs;\n";
 
     $n = 0;

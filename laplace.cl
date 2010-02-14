@@ -1,6 +1,10 @@
 // work group SIZE is 4*4*4
 // shared mem is 6*6*6
 
+#ifdef EMUCL
+#include <stdio.h>
+#endif
+
 __kernel void lap3d(  __global float *c, __global float *lap, int dir, __local float * shared  )
 {
   int xg = get_global_id(0);
@@ -10,6 +14,10 @@ __kernel void lap3d(  __global float *c, __global float *lap, int dir, __local f
   int xl = get_local_id(0);
   int yl = get_local_id(1);
   int zl = get_local_id(2);
+
+  #ifdef EMUCL
+  printf(" global: (%d,%d,%d) local: (%d,%d,%d)\n", xg,yg,zg, xl,yl,zl );
+  #endif  
 
   int a = 1+6+36 + xl + yl*6 + zl*36;
 
