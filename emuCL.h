@@ -55,16 +55,22 @@ typedef cl_int cl_event;
 // arguments are stored as pointers in the kernel datastructure
 cl_int clSetKernelArg( cl_kernel kernel, cl_int id, cl_int size, void* ptr )
 {
-  if( id >= __argidmax ) return 1;
+  if( id >= __argidmax || id < 0 )
+  {
+    fprintf( stderr, "Invalid argument index\n" );
+    exit(1);
+  }
 
   // reserve shared memory
   if( ptr == NULL )
   {
     kernel->shared = realloc( kernel->shared, size );
     ptr = kernel->shared;
+    fprintf( stderr, "arg[id] = %x (size=%d)\n", ptr, size ); 
   }
 
   kernel->a[id] = ptr;
+  fprintf( stderr, "arg[id] = %x\n", ptr ); 
   return CL_SUCCESS;
 }
 
@@ -145,9 +151,10 @@ cl_kernel clCreateKernel( cl_program p, const char *kernel_name, cl_int *err )
   k->shared = NULL;
 
   char f[300];
-  snprintf( f, 300, "%s.so", p->f );
+  snprintf( f, 300, "./%s.so", p->f );
   void* handle = dlopen( f, RTLD_LAZY);
   k->func = (cl_kernel_func)dlsym( handle, kernel_name );  
+fprintf( stderr, "dlopen handle=%x\nfunc=%x\nfiename=%s\n", handle, k->func, f );
 
   if( err != 0 ) (*err) = CL_SUCCESS;
   return k;
@@ -184,7 +191,7 @@ cl_program clCreateProgramWithSource( cl_context context, cl_int dummy1, const c
   snprintf( cmd, 300, "./emuCL_process.pl > %s.c", p->f );
 
   FILE *proc = popen( cmd, "w" );
-  fprintf( proc, *program_source ); 
+  fprintf( proc, "%s", *program_source ); 
   pclose(proc);
 
   *err = CL_SUCCESS;
@@ -250,9 +257,9 @@ fprintf( stderr, " * calculated worksizes\n" );
   k = 0;
 fprintf( stderr, " * allocated memory\n" );
 
-  for( m[0] = 1; m[0] < w[0]; m[0]++ )
-    for( m[1] = 1; m[1] < w[1]; m[1]++ )
-      for( m[2] = 1; m[2] < w[2]; m[2]++ )
+  for( m[0] = 0; m[0] < w[0]; m[0]++ )
+    for( m[1] = 0; m[1] < w[1]; m[1]++ )
+      for( m[2] = 0; m[2] < w[2]; m[2]++ )
       {
         arg_array[k].fence_barrier_p = &fence_barrier;
         arg_array[k].a = kernel->a;
@@ -267,9 +274,9 @@ fprintf( stderr, " * allocated memory\n" );
 fprintf( stderr, " * initialized arguments\n" );
 
   // spawn threads
-  for( j[0] = 1; j[0] < l[0]; j[0]++ ) // iterate over work-groups
-    for( j[1] = 1; j[1] < l[1]; j[1]++ )
-      for( j[2] = 1; j[2] < l[2]; j[2]++ )
+  for( j[0] = 0; j[0] < l[0]; j[0]++ ) // iterate over work-groups
+    for( j[1] = 0; j[1] < l[1]; j[1]++ )
+      for( j[2] = 0; j[2] < l[2]; j[2]++ )
       {
         // count threads and initialize global IDs
         n2 = 0;
@@ -278,7 +285,7 @@ fprintf( stderr, " * initialized arguments\n" );
           arg_array[k].spawn = true;
           for(i = 0; i < work_dim; i++ )
           {
-            arg_array[k].get_global_id[i] = m[i] + j[i]*w[i];
+            arg_array[k].get_global_id[i] = arg_array[k].get_local_id[i] + j[i]*w[i];
             if( arg_array[k].get_global_id[i] >= g[i] )
             {
               arg_array[k].spawn = false;
@@ -297,12 +304,14 @@ fprintf( stderr, " * initialized barrier\n" );
           if( arg_array[k].spawn )
           {
 fprintf( stderr, " * spawning thread #%d\n", k );
-            
-            if( pthread_create(&thr[k], NULL, kernel->func, NULL) )
+           //kernel->func( &arg_array[k] ); 
+           if( pthread_create(&thr[k], NULL, kernel->func, &arg_array[k] ) )
             {
               fprintf( stderr, "Could not create thread\n" );
               exit(1);
             }
+            //usleep(1000);
+fprintf( stderr, " * slept\n" );
           }
 
         // now wait for all running threads in the work group to finish

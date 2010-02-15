@@ -30,13 +30,15 @@ while(<STDIN>)
     $fname = $1;
 
     print "void* $fname( void* __vargs )\n{\n";
+print "printf(\"entered kernel\");\n";
     print "  emuCL_argstruct* __args = (emuCL_argstruct*)__vargs;\n";
 
     $n = 0;
     foreach( @arglist )
     {
+      $memptr = 0;
+      $memptr = 1 if( s/\s*__local\s*//g );
       s/\s*__global\s*//g;
-      s/\s*__local\s*//g;
       s/\s\*/* /g;
       while( s/\s\s/ /g ) {};
 
@@ -44,7 +46,15 @@ while(<STDIN>)
       $type = $1;
       $vname = $2;
 
-      print "  $_ = *(($type*)(__args->a[$n]));\n";
+      if( $memptr == 0 )
+      {
+        print "  $_ = *(($type*)(__args->a[$n]));\n";
+      }
+      else
+      {
+        print "  $_ = (($type)(__args->a[$n]));\n";
+      }
+
       $n++;
     }
     print "  $tail\n";

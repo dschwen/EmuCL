@@ -26,7 +26,13 @@ __kernel void lap3d(  __global float *c, __global float *lap, int dir, __local f
   //
 
   // needs define SIZE, SIZE2, SIZE3
+  #ifdef EMUCL
+  printf(" before shared(%x)[%d] =c(%x)[%d] \n", (void*)shared, a, (void*)c,  xg + yg*SIZE + zg*SIZE2 + dir*SIZE3  );
+  #endif  
   shared[a] = c[ xg + yg*SIZE + zg*SIZE2 + dir*SIZE3 ];
+  #ifdef EMUCL
+  printf(" after shared[]\n" );
+  #endif  
 
   //
   // copy borders
