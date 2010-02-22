@@ -234,7 +234,6 @@ cl_int clEnqueueNDRangeKernel( cl_command_queue command_queue, cl_kernel kernel,
     fprintf( stderr, "Illegal work_dim in clEnqueueNDRangeKernel()\n" );
     exit(1);
   }
-fprintf( stderr, "* clEnqueueNDRangeKernel\n" );
   emuCL_argstruct* arg_array;
   
 
@@ -244,9 +243,8 @@ fprintf( stderr, "* clEnqueueNDRangeKernel\n" );
     l[i] = ( global_work_size[i] + local_work_size[i] - 1 ) / local_work_size[i];
     w[i] = local_work_size[i];
     g[i] = global_work_size[i];
-    n *= l[i];
+    n *= w[i];
   }
-fprintf( stderr, " * calculated worksizes\n" );
 
   pthread_barrier_t fence_barrier;
   pthread_t* thr;
@@ -255,7 +253,6 @@ fprintf( stderr, " * calculated worksizes\n" );
   arg_array = (emuCL_argstruct*)malloc( n * sizeof(emuCL_argstruct) );
   thr = (pthread_t*)malloc( n * sizeof(pthread_t) );
   k = 0;
-fprintf( stderr, " * allocated memory\n" );
 
   for( m[0] = 0; m[0] < w[0]; m[0]++ )
     for( m[1] = 0; m[1] < w[1]; m[1]++ )
@@ -271,13 +268,14 @@ fprintf( stderr, " * allocated memory\n" );
         }
         k++;
       }
-fprintf( stderr, " * initialized arguments\n" );
 
   // spawn threads
   for( j[0] = 0; j[0] < l[0]; j[0]++ ) // iterate over work-groups
     for( j[1] = 0; j[1] < l[1]; j[1]++ )
       for( j[2] = 0; j[2] < l[2]; j[2]++ )
       {
+//fprintf( stderr, "spawn group at %d,%d,%d\n", j[0], j[1], j[2] );
+
         // count threads and initialize global IDs
         n2 = 0;
         for( k = 0; k < n; k++ )
@@ -297,21 +295,17 @@ fprintf( stderr, " * initialized arguments\n" );
 
         // initialize the barrier accordingly
         pthread_barrier_init( &fence_barrier, NULL, n2 );
-fprintf( stderr, " * initialized barrier\n" );
 
         // now actually spawn the threads
         for( k = 0; k < n; k++ )
           if( arg_array[k].spawn )
           {
-fprintf( stderr, " * spawning thread #%d\n", k );
            //kernel->func( &arg_array[k] ); 
            if( pthread_create(&thr[k], NULL, kernel->func, &arg_array[k] ) )
             {
               fprintf( stderr, "Could not create thread\n" );
               exit(1);
             }
-            //usleep(1000);
-fprintf( stderr, " * slept\n" );
           }
 
         // now wait for all running threads in the work group to finish
@@ -335,9 +329,9 @@ cl_int clReleaseProgram( cl_program p )
 {
   char f[300];
   snprintf( f, 300, "%s.c", p->f );
-  //unlink( f );
+  unlink( f );
   snprintf( f, 300, "%s.so", p->f );
-  //unlink( f );
+  unlink( f );
   free( p->f );
   free( p->b );
   return CL_SUCCESS;

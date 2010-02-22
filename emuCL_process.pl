@@ -30,7 +30,7 @@ while(<STDIN>)
     $fname = $1;
 
     print "void* $fname( void* __vargs )\n{\n";
-print "printf(\"entered kernel\");\n";
+#print "printf(\"entered kernel\");\n";
     print "  emuCL_argstruct* __args = (emuCL_argstruct*)__vargs;\n";
 
     $n = 0;

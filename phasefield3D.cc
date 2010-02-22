@@ -55,11 +55,11 @@ void add_define_float( const char *name, double val )
 
 int main (int argc, const char * argv[]) 
 {
-  int size = 128; 
+  int size = 32;//128 
   int size2 = size*size;
   int size3 = size2*size;
 
-  const int itmax = 200;
+  const int itmax = 10;
 
   float *c, *lap;
 
@@ -81,6 +81,8 @@ int main (int argc, const char * argv[])
         c[ x + y*size + z*size2 ] = 0.4;
 
         if( x >= 54 && x <= 64 && y >= 54 && y <= 64 && z >= 54 && z <= 64 )
+          c[ x + y*size + z*size2 ] = 0.6;
+        if( sqrt( sqr(x-16) + sqr(y-16) + sqr(z-16) ) <= 9.0 )
           c[ x + y*size + z*size2 ] = 0.6;
         if( sqrt( sqr(x-29) + sqr(y-29) + sqr(z-29) ) <= 10.0 )
           c[ x + y*size + z*size2 ] = 0.6;
@@ -280,7 +282,8 @@ int main (int argc, const char * argv[])
     err = clEnqueueNDRangeKernel(cmd_queue, kernel[1], 3, NULL, global_work_size, local_work_size, 0, NULL, NULL);
     //printf("err(flx)=%d\n",err);
     
-    if( i % 10 == 9 ) printf( "%d steps...\n", i+1 );
+    //if( i % 10 == 9 ) printf( "%d steps...\n", i+1 );
+    printf( "%d steps...\n", i+1 );
   }
   printf( "done.\n" );
 

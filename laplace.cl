@@ -16,7 +16,7 @@ __kernel void lap3d(  __global float *c, __global float *lap, int dir, __local f
   int zl = get_local_id(2);
 
   #ifdef EMUCL
-  printf(" global: (%d,%d,%d) local: (%d,%d,%d)\n", xg,yg,zg, xl,yl,zl );
+  //printf(" global: (%d,%d,%d) local: (%d,%d,%d)\n", xg,yg,zg, xl,yl,zl );
   #endif  
 
   int a = 1+6+36 + xl + yl*6 + zl*36;
@@ -27,11 +27,11 @@ __kernel void lap3d(  __global float *c, __global float *lap, int dir, __local f
 
   // needs define SIZE, SIZE2, SIZE3
   #ifdef EMUCL
-  printf(" before shared(%x)[%d] =c(%x)[%d] \n", (void*)shared, a, (void*)c,  xg + yg*SIZE + zg*SIZE2 + dir*SIZE3  );
+  //printf(" before shared(%x)[%d] =c(%x)[%d] \n", (void*)shared, a, (void*)c,  xg + yg*SIZE + zg*SIZE2 + dir*SIZE3  );
   #endif  
   shared[a] = c[ xg + yg*SIZE + zg*SIZE2 + dir*SIZE3 ];
   #ifdef EMUCL
-  printf(" after shared[]\n" );
+  //printf(" after shared[]\n" );
   #endif  
 
   //
